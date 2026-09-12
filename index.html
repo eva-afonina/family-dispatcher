@@ -39,7 +39,8 @@
     <header class="topbar">
       <div>
         <p class="eyebrow light-text">Общая рабочая версия</p>
-        <h1>Семейный диспетчер</h1>
+        <h1 id="dispatcher-title">Семейный диспетчер</h1>
+        <p class="version-note">V1.8 · календарь и цельные временные плашки</p>
       </div>
       <div class="account">
         <span id="member-name"></span>
@@ -52,9 +53,12 @@
     <nav class="tabs" aria-label="Разделы">
       <button class="tab active" data-view="overview" type="button">Главная</button>
       <button class="tab" data-view="week" type="button">Неделя</button>
+      <button class="tab" data-view="day" type="button">По дням</button>
+      <button class="tab" data-view="calendar" type="button">Календарь до НГ</button>
+      <button class="tab" data-view="base" type="button">Базовый режим</button>
+      <button class="tab" data-view="conflicts" type="button">Накладки</button>
       <button class="tab" data-view="payments" type="button">Оплаты</button>
-      <button class="tab" data-view="calendar" type="button">Календарь</button>
-      <button class="tab" data-view="base" type="button">База</button>
+      <button class="tab" data-view="settings" type="button">Настройки</button>
       <button class="tab" data-view="changes" type="button">Изменения</button>
     </nav>
 
@@ -86,7 +90,28 @@
           <div><p class="eyebrow">Расписание</p><h2>Неделя</h2></div>
           <button id="add-event-button" class="button primary" type="button">+ Занятие</button>
         </div>
+        <p class="muted">Базовый режим показан серым. Карточки учитывают дорогу, подтверждения и оплаты.</p>
+        <div id="people-legend" class="legend people-legend" aria-label="Участники"></div>
         <div id="week-grid" class="week-grid"></div>
+      </section>
+
+      <section id="view-day" class="view">
+        <div class="section-head">
+          <div><p class="eyebrow">Полная сетка</p><h2>Расписание по дням</h2></div>
+        </div>
+        <div class="panel day-controls">
+          <div class="form-grid two">
+            <label>День<select id="day-select"></select></label>
+            <label>Показать<select id="child-filter"><option value="all">Всех детей</option></select></label>
+          </div>
+          <p class="muted">Нажмите на свободную клетку, чтобы добавить занятие. Цветная плашка занимает всё время занятия; дорога и буфер учитываются при поиске накладок.</p>
+        </div>
+        <div class="schedule-table-wrap">
+          <table class="day-table">
+            <thead><tr id="day-table-head"><th>Время</th></tr></thead>
+            <tbody id="day-table-body"></tbody>
+          </table>
+        </div>
       </section>
 
       <section id="view-payments" class="view">
@@ -99,15 +124,19 @@
 
       <section id="view-calendar" class="view">
         <div class="section-head">
-          <div><p class="eyebrow">Исключения и планы</p><h2>Календарь</h2></div>
+          <div><p class="eyebrow">Исключения и планы</p><h2>Календарь до Нового года</h2></div>
           <button id="add-mark-button" class="button primary" type="button">+ Отметка</button>
         </div>
+        <p id="calendar-range-label" class="muted">Сентябрь–декабрь 2026. Здесь видны постоянные занятия, каникулы, поездки и исключения.</p>
         <div class="legend" aria-label="Легенда">
-          <span><i class="dot plan"></i>Событие</span>
-          <span><i class="dot cancel"></i>Отмена</span>
-          <span><i class="dot stop"></i>Больше не ходит</span>
-          <span><i class="dot busy"></i>Взрослый занят</span>
+          <span class="legend-pill plan"><i class="dot plan"></i>Событие, каникулы или поездка</span>
+          <span class="legend-pill cancel"><i class="dot cancel"></i>Оранжевый — разовая отмена</span>
+          <span class="legend-pill stop"><i class="dot stop"></i>Красный — больше не ходит</span>
+          <span id="busy-legend-primary" class="legend-pill busy-primary"></span>
+          <span id="busy-legend-secondary" class="legend-pill busy-secondary"></span>
         </div>
+        <div id="months-wrap" class="months-wrap"></div>
+        <div class="section-head sub-section-head"><div><p class="eyebrow">Редактирование</p><h2>Все отметки</h2></div></div>
         <div id="calendar-list" class="cards-list"></div>
       </section>
 
@@ -119,6 +148,19 @@
           <div id="base-rows" class="cards-list"></div>
           <button class="button primary" type="submit">Сохранить базовый режим</button>
         </form>
+      </section>
+
+      <section id="view-conflicts" class="view">
+        <div class="section-head">
+          <div><p class="eyebrow">Контроль логистики</p><h2>Накладки</h2></div>
+        </div>
+        <div id="conflicts-list" class="stack"></div>
+      </section>
+
+      <section id="view-settings" class="view">
+        <div class="section-head">
+          <div><p class="eyebrow">Рабочий диапазон</p><h2>Настройки</h2></div>
+        </div>
         <form id="settings-form" class="panel settings-panel">
           <div class="panel-head"><h2>Границы дня</h2></div>
           <div class="form-grid two">
@@ -127,6 +169,11 @@
           </div>
           <button class="button secondary" type="submit">Сохранить время</button>
         </form>
+        <div class="panel settings-panel">
+          <div class="panel-head"><h2>Личная резервная копия</h2></div>
+          <p class="muted">Скачивается только после входа. Почты и коды доступа в файл не попадают.</p>
+          <button id="download-backup-button" class="button secondary" type="button">Скачать копию данных</button>
+        </div>
       </section>
 
       <section id="view-changes" class="view">
@@ -150,7 +197,7 @@
       <div class="form-grid three">
         <label>День<select id="event-day" required></select></label>
         <label>Ребёнок<select id="event-child" required></select></label>
-        <label>Тип<select id="event-type"><option value="regular">Постоянное</option><option value="oneoff">Разовое</option></select></label>
+        <label>Тип<select id="event-type"><option value="regular">Регулярное занятие</option><option value="oneoff">Разовое событие</option><option value="doctor">Врач</option><option value="family">Семейное мероприятие</option></select></label>
         <label>Начало<input id="event-start" type="time" required></label>
         <label>Конец<input id="event-end" type="time" required></label>
         <label>Статус<select id="event-status"><option value="pre">Предварительно</option><option value="confirmed">Подтверждено</option><option value="moved">Перенесено</option><option value="cancelled">Отменено</option></select></label>
@@ -159,15 +206,29 @@
       <label>Место<input id="event-place" maxlength="240"></label>
       <div class="form-grid three">
         <label>Кто сопровождает<select id="event-responsible"></select></label>
-        <label>Роль<input id="event-role" maxlength="120" placeholder="Привозит и забирает"></label>
+        <label>Роль<select id="event-role"><option>Привозит и забирает</option><option>Привозит</option><option>Забирает</option><option>Сопровождает</option><option>Только контролирует</option></select></label>
         <label>Подтверждение<select id="event-responsible-status"><option value="pre">Предварительно</option><option value="confirmed">Подтверждено</option></select></label>
         <label>Дорога туда, мин<input id="event-before" type="number" min="0" max="300"></label>
         <label>Дорога обратно, мин<input id="event-after" type="number" min="0" max="300"></label>
         <label>Буфер, мин<input id="event-buffer" type="number" min="0" max="300"></label>
         <label>Кто платит<select id="event-payer"></select></label>
-        <label>Сумма, ₽<input id="event-amount" type="number" min="0" max="10000000" step="1"></label>
-        <label>Дата оплаты<input id="event-pay-date" type="date"></label>
+        <label>Статус плательщика<select id="event-payer-status"><option value="pre">Предварительно</option><option value="confirmed">Подтверждено</option></select></label>
+        <label>Доп. расход, ₽<input id="event-extra-cost" type="number" min="0" max="10000000" step="1"></label>
       </div>
+      <fieldset id="event-payment-group" class="dialog-group">
+        <legend>Оплата постоянного занятия</legend>
+        <p class="muted">Для кружка или секции. Эти данные видны и во вкладке «Оплаты».</p>
+        <div class="form-grid three">
+          <label>Стоимость пакета / месяца, ₽<input id="event-amount" type="number" min="0" max="10000000" step="1"></label>
+          <label>Следующая оплата<input id="event-pay-date" type="date"></label>
+          <label>Занятий оплачено<input id="event-purchased" type="number" min="0" max="1000"></label>
+          <label>Использовано<input id="event-used" type="number" min="0" max="1000"></label>
+          <label>Пропущено, но сохранено<input id="event-saved" type="number" min="0" max="1000"></label>
+          <label>Пропущено и сгорело<input id="event-burned" type="number" min="0" max="1000"></label>
+          <label>При пропуске<select id="event-policy"><option value="burn">Сгорает</option><option value="shift">Переносится</option><option value="case">Индивидуально</option></select></label>
+          <label>Посещение<select id="event-attendance"><option value="planned">Запланировано</option><option value="attended">Был</option><option value="missed">Пропустил</option><option value="orgcancel">Отменено организацией</option></select></label>
+        </div>
+      </fieldset>
       <label>Комментарий<textarea id="event-note" maxlength="1200"></textarea></label>
       <div class="dialog-actions">
         <button id="delete-event-button" class="button danger" type="button">Удалить</button>
@@ -210,12 +271,12 @@
         <label>Тип<select id="mark-type"><option value="plan">Запланированное событие</option><option value="cancel">Разовая отмена</option><option value="stop">Больше не ходит</option><option value="busy">Взрослый занят</option></select></label>
         <label id="mark-busy-wrapper" hidden>Кто занят<select id="mark-busy-person"></select></label>
         <label>Ребёнок<select id="mark-child"></select></label>
-        <label>С<input id="mark-start" type="date" required></label>
-        <label>По<input id="mark-end" type="date" required></label>
-        <label>Занятие<input id="mark-activity" maxlength="160"></label>
-        <label>Подмена<input id="mark-substitute" maxlength="120"></label>
+        <label>С<input id="mark-start" type="date" min="2026-09-01" max="2026-12-31" required></label>
+        <label>По<input id="mark-end" type="date" min="2026-09-01" max="2026-12-31" required></label>
+        <label>Занятие<select id="mark-activity"></select></label>
+        <label>Кто подменяет<select id="mark-substitute"></select></label>
       </div>
-      <label>Название<input id="mark-title" maxlength="200"></label>
+      <label>Название<input id="mark-title" maxlength="200" placeholder="Например: каникулы, поездка, театр, врач"></label>
       <label>Комментарий<textarea id="mark-note" maxlength="1200"></textarea></label>
       <div class="dialog-actions">
         <button id="delete-mark-button" class="button danger" type="button">Удалить</button>
