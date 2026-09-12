@@ -2,21 +2,228 @@
 <html lang="ru">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta name="robots" content="noindex,nofollow">
-  <title>Семейный диспетчер — обновление</title>
-  <style>
-    :root{color-scheme:light;font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#f6f0e7;color:#2e302b}
-    body{margin:0;min-height:100vh;display:grid;place-items:center;padding:24px}
-    main{max-width:620px;background:#fff;border:1px solid #ded7cc;border-radius:24px;padding:32px;box-shadow:0 18px 50px rgba(47,42,35,.08)}
-    h1{font-size:clamp(28px,6vw,44px);margin:0 0 16px}
-    p{font-size:18px;line-height:1.55;margin:0}
-  </style>
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#3d4c3f">
+  <meta name="robots" content="noindex,nofollow,noarchive">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; connect-src 'self' https://iymstmgtmkquhgypfqlg.supabase.co; img-src 'self' data:; script-src 'self'; style-src 'self'; font-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'">
+  <title>Семейный диспетчер</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="styles.css">
+  <script src="app.js" defer></script>
 </head>
 <body>
-  <main>
-    <h1>Семейный диспетчер</h1>
-    <p>Обновляем защищённую рабочую версию. Семейные данные на этой странице и в публичном коде не хранятся.</p>
-  </main>
+  <noscript>Для работы приложения нужен JavaScript.</noscript>
+
+  <section id="login-screen" class="login-screen">
+    <form id="login-form" class="login-card" autocomplete="on">
+      <div class="brand-mark" aria-hidden="true">✓</div>
+      <p class="eyebrow">Закрытая семейная версия</p>
+      <h1>Семейный диспетчер</h1>
+      <p class="muted">Введите имя входа и личный код. Семейные данные появятся только после проверки.</p>
+      <label>
+        Имя входа
+        <input id="login-key" name="username" autocomplete="username" autocapitalize="none" spellcheck="false" required maxlength="32" placeholder="Ваше имя входа">
+      </label>
+      <label>
+        Личный код
+        <input id="login-code" name="password" type="password" autocomplete="current-password" required maxlength="80" placeholder="••••••••••••">
+      </label>
+      <button id="login-button" class="button primary wide" type="submit">Войти</button>
+      <p id="login-message" class="form-message" role="status" aria-live="polite"></p>
+      <p class="tiny">Код не отправляется в GitHub и не сохраняется в открытом коде.</p>
+    </form>
+  </section>
+
+  <div id="app" class="app" hidden>
+    <header class="topbar">
+      <div>
+        <p class="eyebrow light-text">Общая рабочая версия</p>
+        <h1>Семейный диспетчер</h1>
+      </div>
+      <div class="account">
+        <span id="member-name"></span>
+        <span id="sync-state" class="sync-state">загрузка…</span>
+        <button id="refresh-button" class="icon-button" type="button" title="Обновить" aria-label="Обновить">↻</button>
+        <button id="logout-button" class="button ghost" type="button">Выйти</button>
+      </div>
+    </header>
+
+    <nav class="tabs" aria-label="Разделы">
+      <button class="tab active" data-view="overview" type="button">Главная</button>
+      <button class="tab" data-view="week" type="button">Неделя</button>
+      <button class="tab" data-view="payments" type="button">Оплаты</button>
+      <button class="tab" data-view="calendar" type="button">Календарь</button>
+      <button class="tab" data-view="base" type="button">База</button>
+      <button class="tab" data-view="changes" type="button">Изменения</button>
+    </nav>
+
+    <main>
+      <section id="view-overview" class="view active">
+        <div class="hero-card">
+          <div>
+            <p class="eyebrow">На сегодня</p>
+            <h2 id="today-title">Загрузка…</h2>
+            <p id="today-summary" class="muted"></p>
+          </div>
+          <button id="overview-add-event" class="button primary" type="button">+ Занятие</button>
+        </div>
+        <div id="metrics" class="metrics"></div>
+        <div class="content-grid">
+          <article class="panel">
+            <div class="panel-head"><h2>Требует внимания</h2></div>
+            <div id="attention-list" class="stack"></div>
+          </article>
+          <article class="panel">
+            <div class="panel-head"><h2>Ближайшие занятия</h2></div>
+            <div id="next-events" class="stack"></div>
+          </article>
+        </div>
+      </section>
+
+      <section id="view-week" class="view">
+        <div class="section-head">
+          <div><p class="eyebrow">Расписание</p><h2>Неделя</h2></div>
+          <button id="add-event-button" class="button primary" type="button">+ Занятие</button>
+        </div>
+        <div id="week-grid" class="week-grid"></div>
+      </section>
+
+      <section id="view-payments" class="view">
+        <div class="section-head">
+          <div><p class="eyebrow">Учёт</p><h2>Оплаты</h2></div>
+          <button id="add-payment-button" class="button primary" type="button">+ Оплата</button>
+        </div>
+        <div id="payments-list" class="cards-list"></div>
+      </section>
+
+      <section id="view-calendar" class="view">
+        <div class="section-head">
+          <div><p class="eyebrow">Исключения и планы</p><h2>Календарь</h2></div>
+          <button id="add-mark-button" class="button primary" type="button">+ Отметка</button>
+        </div>
+        <div class="legend" aria-label="Легенда">
+          <span><i class="dot plan"></i>Событие</span>
+          <span><i class="dot cancel"></i>Отмена</span>
+          <span><i class="dot stop"></i>Больше не ходит</span>
+          <span><i class="dot busy"></i>Взрослый занят</span>
+        </div>
+        <div id="calendar-list" class="cards-list"></div>
+      </section>
+
+      <section id="view-base" class="view">
+        <div class="section-head">
+          <div><p class="eyebrow">Будни</p><h2>Базовый режим</h2></div>
+        </div>
+        <form id="base-form" class="stack">
+          <div id="base-rows" class="cards-list"></div>
+          <button class="button primary" type="submit">Сохранить базовый режим</button>
+        </form>
+        <form id="settings-form" class="panel settings-panel">
+          <div class="panel-head"><h2>Границы дня</h2></div>
+          <div class="form-grid two">
+            <label>Начало дня<input id="day-start" type="time" required></label>
+            <label>Конец дня<input id="day-end" type="time" required></label>
+          </div>
+          <button class="button secondary" type="submit">Сохранить время</button>
+        </form>
+      </section>
+
+      <section id="view-changes" class="view">
+        <div class="section-head">
+          <div><p class="eyebrow">Прозрачность</p><h2>Последние изменения</h2></div>
+        </div>
+        <div id="changes-list" class="timeline"></div>
+      </section>
+    </main>
+
+    <footer>
+      <span>Данные хранятся в закрытой базе.</span>
+      <span id="last-loaded"></span>
+    </footer>
+  </div>
+
+  <dialog id="event-dialog">
+    <form id="event-form" method="dialog" class="dialog-form">
+      <div class="dialog-head"><div><p class="eyebrow">Расписание</p><h2 id="event-dialog-title">Занятие</h2></div><button class="dialog-close" type="button" aria-label="Закрыть">×</button></div>
+      <input id="event-id" type="hidden">
+      <div class="form-grid three">
+        <label>День<select id="event-day" required></select></label>
+        <label>Ребёнок<select id="event-child" required></select></label>
+        <label>Тип<select id="event-type"><option value="regular">Постоянное</option><option value="oneoff">Разовое</option></select></label>
+        <label>Начало<input id="event-start" type="time" required></label>
+        <label>Конец<input id="event-end" type="time" required></label>
+        <label>Статус<select id="event-status"><option value="pre">Предварительно</option><option value="confirmed">Подтверждено</option><option value="moved">Перенесено</option><option value="cancelled">Отменено</option></select></label>
+      </div>
+      <label>Занятие<input id="event-title" required maxlength="160"></label>
+      <label>Место<input id="event-place" maxlength="240"></label>
+      <div class="form-grid three">
+        <label>Кто сопровождает<select id="event-responsible"></select></label>
+        <label>Роль<input id="event-role" maxlength="120" placeholder="Привозит и забирает"></label>
+        <label>Подтверждение<select id="event-responsible-status"><option value="pre">Предварительно</option><option value="confirmed">Подтверждено</option></select></label>
+        <label>Дорога туда, мин<input id="event-before" type="number" min="0" max="300"></label>
+        <label>Дорога обратно, мин<input id="event-after" type="number" min="0" max="300"></label>
+        <label>Буфер, мин<input id="event-buffer" type="number" min="0" max="300"></label>
+        <label>Кто платит<select id="event-payer"></select></label>
+        <label>Сумма, ₽<input id="event-amount" type="number" min="0" max="10000000" step="1"></label>
+        <label>Дата оплаты<input id="event-pay-date" type="date"></label>
+      </div>
+      <label>Комментарий<textarea id="event-note" maxlength="1200"></textarea></label>
+      <div class="dialog-actions">
+        <button id="delete-event-button" class="button danger" type="button">Удалить</button>
+        <button class="button primary" type="submit">Сохранить</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="payment-dialog">
+    <form id="payment-form" method="dialog" class="dialog-form">
+      <div class="dialog-head"><div><p class="eyebrow">Учёт</p><h2>Оплата</h2></div><button class="dialog-close" type="button" aria-label="Закрыть">×</button></div>
+      <input id="payment-id" type="hidden">
+      <div class="form-grid two">
+        <label>Ребёнок<select id="payment-child" required></select></label>
+        <label>Занятие<input id="payment-activity" required maxlength="160"></label>
+        <label>Сумма, ₽<input id="payment-amount" type="number" min="0" max="10000000" required></label>
+        <label>Оплатить до<input id="payment-date" type="date"></label>
+        <label>Кто платит<select id="payment-payer"></select></label>
+        <label>Подтверждение<select id="payment-payer-status"><option value="pre">Предварительно</option><option value="confirmed">Подтверждено</option></select></label>
+        <label>Статус оплаты<select id="payment-status"><option value="pending">Не оплачено</option><option value="paid">Оплачено</option></select></label>
+        <label>Правило пропуска<select id="payment-policy"><option value="burn">Сгорает</option><option value="shift">Переносится</option><option value="case">По ситуации</option></select></label>
+        <label>Куплено занятий<input id="payment-purchased" type="number" min="0" max="1000"></label>
+        <label>Использовано<input id="payment-used" type="number" min="0" max="1000"></label>
+        <label>Сохранено<input id="payment-saved" type="number" min="0" max="1000"></label>
+        <label>Сгорело<input id="payment-burned" type="number" min="0" max="1000"></label>
+      </div>
+      <label>Комментарий<textarea id="payment-note" maxlength="1200"></textarea></label>
+      <div class="dialog-actions">
+        <button id="delete-payment-button" class="button danger" type="button">Удалить</button>
+        <button class="button primary" type="submit">Сохранить</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="mark-dialog">
+    <form id="mark-form" method="dialog" class="dialog-form">
+      <div class="dialog-head"><div><p class="eyebrow">Календарь</p><h2>Отметка</h2></div><button class="dialog-close" type="button" aria-label="Закрыть">×</button></div>
+      <input id="mark-id" type="hidden">
+      <div class="form-grid two">
+        <label>Тип<select id="mark-type"><option value="plan">Запланированное событие</option><option value="cancel">Разовая отмена</option><option value="stop">Больше не ходит</option><option value="busy">Взрослый занят</option></select></label>
+        <label id="mark-busy-wrapper" hidden>Кто занят<select id="mark-busy-person"></select></label>
+        <label>Ребёнок<select id="mark-child"></select></label>
+        <label>С<input id="mark-start" type="date" required></label>
+        <label>По<input id="mark-end" type="date" required></label>
+        <label>Занятие<input id="mark-activity" maxlength="160"></label>
+        <label>Подмена<input id="mark-substitute" maxlength="120"></label>
+      </div>
+      <label>Название<input id="mark-title" maxlength="200"></label>
+      <label>Комментарий<textarea id="mark-note" maxlength="1200"></textarea></label>
+      <div class="dialog-actions">
+        <button id="delete-mark-button" class="button danger" type="button">Удалить</button>
+        <button class="button primary" type="submit">Сохранить</button>
+      </div>
+    </form>
+  </dialog>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
 </body>
 </html>
